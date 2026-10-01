@@ -49,6 +49,13 @@
             font-size: 0.85rem;
             color: #aaaaaa;
             margin-top: 8px;
+            line-height: 1.4;
+        }
+        
+        .caveat {
+            color: #ffcc00;
+            font-style: italic;
+            margin-top: 5px;
         }
 
         .btn-group {
@@ -85,8 +92,7 @@
             aspect-ratio: 1 / 1;
         }
 
-        /* Responsive canvas sizing */
-        canvas { 
+        canvas#gameCanvas { 
             background: var(--bg-color); 
             cursor: crosshair; 
             touch-action: none; 
@@ -106,19 +112,14 @@
             justify-content: center;
             border-radius: 10px;
             opacity: 0;
-            pointer-events: none; /* Allows clicks to pass through to canvas container when hidden */
+            pointer-events: none;
             transition: opacity 0.3s;
             text-align: center;
             padding: 20px;
             box-sizing: border-box;
         }
 
-        .overlay.active {
-            opacity: 1;
-            /* No pointer-events: auto here so container still captures movement if needed, 
-               though during rest movement isn't tracked anyway */
-        }
-
+        .overlay.active { opacity: 1; }
         .overlay h2 { margin: 0 0 10px 0; color: var(--target-active); }
         .overlay p { font-size: 1.2rem; margin: 5px 0; }
         .overlay .countdown { font-size: 1.5rem; font-weight: bold; margin-top: 15px; }
@@ -200,7 +201,16 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        canvas#chartCanvas {
+            background: #111;
+            border-radius: 8px;
+            width: 100%;
+            height: auto;
+            margin-bottom: 15px;
+            display: block;
         }
 
         table {
@@ -221,6 +231,7 @@
             color: #888888;
             line-height: 1.6;
             width: 100%;
+            max-width: 600px;
         }
 
         footer a { color: #888888; text-decoration: underline; }
@@ -237,7 +248,10 @@
                 <button id="resetBtn" title="Reset All Trials">Reset Data</button>
             </div>
         </div>
-        <div class="instructions">Instructions: Keep your cursor (or finger) continuously inside the moving circular target.</div>
+        <div class="instructions">
+            Keep your cursor (or finger) continuously inside the moving circular target.
+            <div class="caveat">Note: A classroom simulation. Using a mouse or finger differs from a stylus on a physical rotor, so results are for demonstration.</div>
+        </div>
     </div>
 
     <div class="stats">
@@ -258,7 +272,6 @@
     </div>
 
     <div class="canvas-container">
-        <!-- Internal resolution is locked at 400x400 -->
         <canvas id="gameCanvas" width="400" height="400"></canvas>
         <div id="trialOverlay" class="overlay">
             <h2 id="overlayTitle">Trial Complete</h2>
@@ -276,13 +289,13 @@
         </div>
         <div class="control-row">
             <label>RPM (Speed)</label>
-            <input type="range" id="rpmSlider" min="1" max="60" value="8">
-            <div class="val-display" id="rpmVal">8</div>
+            <input type="range" id="rpmSlider" min="1" max="60" value="30">
+            <div class="val-display" id="rpmVal">30</div>
         </div>
         <div class="control-row">
             <label>Target Size</label>
-            <input type="range" id="sizeSlider" min="10" max="50" value="25">
-            <div class="val-display" id="sizeVal">25</div>
+            <input type="range" id="sizeSlider" min="10" max="50" value="15">
+            <div class="val-display" id="sizeVal">15</div>
         </div>
         <div class="control-row">
             <label>Duration (s)</label>
@@ -301,6 +314,9 @@
             <h3 style="margin:0; font-size: 1rem; font-weight: normal;">Learning Curve Data</h3>
             <button id="exportBtn" disabled>Export CSV</button>
         </div>
+        
+        <canvas id="chartCanvas" width="500" height="200"></canvas>
+
         <table id="resultsTable">
             <thead>
                 <tr>
@@ -318,14 +334,18 @@
     </div>
 
     <footer>
-        © 2026 Sarah Qureshi. All rights reserved.<br>
-        Created by Sarah Qureshi | LinkedIn: <a href="https://www.linkedin.com/in/sarah-qureshi-33a459438?utm_source=share_via&utm_content=profile&utm_medium=member_android" target="_blank">Profile</a>
+        <strong>&copy; 2026 Sarah Qureshi. All rights reserved.</strong><br><br>
+        This software is free to use for personal, educational and non-commercial purposes, including use in classrooms and linking to it from other sites.<br>
+        You may not copy, redistribute, modify, sell or create derivative works of the source code without prior written permission from the copyright holder.<br>
+        Contact: <a href="mailto:sarahqureshipsych@gmail.com">sarahqureshipsych@gmail.com</a>
     </footer>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const canvasContainer = document.querySelector('.canvas-container');
+        const chartCanvas = document.getElementById('chartCanvas');
+        const chartCtx = chartCanvas.getContext('2d');
         
         const startBtn = document.getElementById('startBtn');
         const resetBtn = document.getElementById('resetBtn');
@@ -373,12 +393,11 @@
         let timeOnTarget = 0;
         let totalTime = 0;
         let lastTimestamp = 0;
-        let mouseX = -100, mouseY = -100; // start off-screen
+        let mouseX = -100, mouseY = -100;
         let animationId;
         let restIntervalId;
         let resultsData = [];
 
-        // UI Listeners
         function updateSliders() {
             MAX_TRIALS = parseInt(maxTrialsSlider.value); maxTrialsVal.innerText = MAX_TRIALS; maxTrialsDisp.innerText = MAX_TRIALS;
             RPM = parseInt(rpmSlider.value); rpmVal.innerText = RPM;
@@ -390,6 +409,7 @@
                 remainingDisp.innerText = TRIAL_DURATION;
                 drawScene(centerX + pathRadius * Math.cos(angle), centerY + pathRadius * Math.sin(angle), false);
             }
+            drawChart();
         }
 
         maxTrialsSlider.addEventListener('input', updateSliders);
@@ -398,14 +418,10 @@
         durationSlider.addEventListener('input', updateSliders);
         restSlider.addEventListener('input', updateSliders);
 
-        // Universal pointer support attached to the CONTAINER, mapping to responsive canvas scale
         canvasContainer.addEventListener('pointermove', (e) => {
             const rect = canvas.getBoundingClientRect();
-            
-            // Calculate scale ratio between actual display size and internal 400x400 size
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            
             mouseX = (e.clientX - rect.left) * scaleX;
             mouseY = (e.clientY - rect.top) * scaleY;
         });
@@ -415,7 +431,6 @@
         function drawScene(targetX, targetY, isOnTarget) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Path
             ctx.beginPath();
             ctx.arc(centerX, centerY, pathRadius, 0, Math.PI * 2);
             ctx.strokeStyle = '#444444';
@@ -424,13 +439,11 @@
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Center dot
             ctx.beginPath();
             ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
             ctx.fillStyle = '#444444';
             ctx.fill();
 
-            // Moving Target Outer
             ctx.beginPath();
             ctx.arc(targetX, targetY, TARGET_RADIUS, 0, Math.PI * 2);
             ctx.fillStyle = isOnTarget ? 'rgba(255, 128, 128, 0.4)' : 'rgba(229, 179, 179, 0.2)'; 
@@ -439,11 +452,63 @@
             ctx.lineWidth = 1;
             ctx.stroke();
 
-            // Moving Target Inner
             ctx.beginPath();
             ctx.arc(targetX, targetY, targetInnerRadius, 0, Math.PI * 2);
             ctx.fillStyle = isOnTarget ? '#ff8080' : '#e5b3b3'; 
             ctx.fill();
+        }
+
+        function drawChart() {
+            chartCtx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+            
+            const padX = 40;
+            const padY = 20;
+            const w = chartCanvas.width - padX * 2;
+            const h = chartCanvas.height - padY * 2;
+
+            chartCtx.strokeStyle = '#444';
+            chartCtx.lineWidth = 1;
+            chartCtx.beginPath();
+            chartCtx.moveTo(padX, padY);
+            chartCtx.lineTo(padX, chartCanvas.height - padY);
+            chartCtx.lineTo(chartCanvas.width - padX + 10, chartCanvas.height - padY);
+            chartCtx.stroke();
+
+            chartCtx.fillStyle = '#aaa';
+            chartCtx.font = '12px sans-serif';
+            chartCtx.textAlign = 'right';
+            chartCtx.textBaseline = 'middle';
+            chartCtx.fillText('100%', padX - 8, padY);
+            chartCtx.fillText('50%', padX - 8, padY + h/2);
+            chartCtx.fillText('0%', padX - 8, padY + h);
+
+            if (resultsData.length === 0) return;
+
+            chartCtx.beginPath();
+            chartCtx.strokeStyle = '#ff8080';
+            chartCtx.lineWidth = 2;
+            
+            const xStep = MAX_TRIALS > 1 ? w / (MAX_TRIALS - 1) : w;
+
+            resultsData.forEach((d, i) => {
+                const x = padX + (d.trial - 1) * xStep;
+                const y = padY + h - (parseFloat(d.accuracy) / 100) * h;
+                if (i === 0) chartCtx.moveTo(x, y);
+                else chartCtx.lineTo(x, y);
+            });
+            chartCtx.stroke();
+
+            resultsData.forEach((d) => {
+                const x = padX + (d.trial - 1) * xStep;
+                const y = padY + h - (parseFloat(d.accuracy) / 100) * h;
+                chartCtx.beginPath();
+                chartCtx.arc(x, y, 4, 0, Math.PI*2);
+                chartCtx.fillStyle = '#ff8080';
+                chartCtx.fill();
+                chartCtx.strokeStyle = '#111';
+                chartCtx.lineWidth = 1.5;
+                chartCtx.stroke();
+            });
         }
 
         function startTrial() {
@@ -472,13 +537,9 @@
 
         function endTrial() {
             isTesting = false;
-            
-            // Hard cap time on target to prevent scoring nudges over 100% due to frame deltas
             timeOnTarget = Math.min(timeOnTarget, TRIAL_DURATION);
-            
             let percent = ((timeOnTarget / TRIAL_DURATION) * 100).toFixed(1);
             
-            // Log Data
             resultsData.push({
                 trial: currentTrial,
                 rpm: RPM,
@@ -487,23 +548,22 @@
                 score: timeOnTarget.toFixed(2),
                 accuracy: percent
             });
+            
             updateTable();
+            drawChart();
             exportBtn.disabled = false;
 
-            // Show Results overlay
             overlayTime.innerText = timeOnTarget.toFixed(2);
             overlayPercent.innerText = percent;
             overlay.classList.add('active');
 
             if (currentTrial >= MAX_TRIALS) {
-                // Session is fully complete
                 isSessionComplete = true;
                 overlayTitle.innerText = "Session Complete";
                 countdownText.innerText = "All scheduled trials finished.";
                 startBtn.innerText = "Session Done";
-                startBtn.disabled = true; // Wait for hard reset
+                startBtn.disabled = true;
             } else if (REST_INTERVAL > 0) {
-                // Spaced practice: start rest countdown
                 isResting = true;
                 let timeLeft = REST_INTERVAL;
                 countdownText.innerText = `Next trial in ${timeLeft}s`;
@@ -521,7 +581,6 @@
                     }
                 }, 1000);
             } else {
-                // Massed practice: manual trigger for next trial
                 countdownText.innerText = "Ready for next trial";
                 currentTrial++;
                 trialDisp.innerText = currentTrial;
@@ -544,6 +603,7 @@
             angle = -Math.PI / 2;
             resultsData = [];
             updateTable();
+            drawChart();
             
             trialDisp.innerText = currentTrial;
             remainingDisp.innerText = TRIAL_DURATION;
@@ -560,7 +620,6 @@
         function gameLoop(timestamp) {
             if (!isTesting) return;
 
-            // Time step cap logic prevents massive jumps if user switches tabs mid-trial
             let rawDelta = (timestamp - lastTimestamp) / 1000;
             const deltaTime = Math.min(rawDelta, 0.1); 
             lastTimestamp = timestamp;
