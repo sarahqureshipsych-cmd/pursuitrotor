@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pursuit Rotor Test</title>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --accent-color: #222222;
+            --track-color: #444444;
+            --target-base: #e5b3b3;
+            --target-active: #ff8080;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            background: var(--bg-color); 
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px; 
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .header {
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 15px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin: 0;
+        }
+
+        .instructions {
+            font-size: 0.85rem;
+            color: #aaaaaa;
+            margin-top: 8px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            background: var(--accent-color);
+            color: white;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover:not(:disabled) { background: #333; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        button.primary-btn {
+            background: #ffffff;
+            color: #000000;
+            font-weight: bold;
+        }
+        button.primary-btn:hover:not(:disabled) { background: #dddddd; }
+
+        .canvas-container {
+            position: relative;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 1 / 1;
+        }
+
+        /* Responsive canvas sizing */
+        canvas { 
+            background: var(--bg-color); 
+            cursor: crosshair; 
+            touch-action: none; 
+            border-radius: 10px;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            opacity: 0;
+            pointer-events: none; /* Allows clicks to pass through to canvas container when hidden */
+            transition: opacity 0.3s;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            /* No pointer-events: auto here so container still captures movement if needed, 
+               though during rest movement isn't tracked anyway */
+        }
+
+        .overlay h2 { margin: 0 0 10px 0; color: var(--target-active); }
+        .overlay p { font-size: 1.2rem; margin: 5px 0; }
+        .overlay .countdown { font-size: 1.5rem; font-weight: bold; margin-top: 15px; }
+
+        .stats { 
+            display: flex; 
+            justify-content: space-between;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex: 1;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            color: #aaaaaa;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 500px;
+            background: #111;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .control-row label {
+            width: 140px;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+
+        input[type=range] {
+            flex-grow: 1;
+            accent-color: #ffffff;
+        }
+
+        .val-display {
+            background: var(--accent-color);
+            padding: 5px;
+            border-radius: 5px;
+            width: 35px;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        .results-section {
+            width: 100%;
+            max-width: 500px;
+            margin-top: 10px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        th { border-bottom: 1px solid #444; padding: 8px; color: #aaa; font-weight: normal; }
+        td { padding: 8px; border-bottom: 1px solid #222; }
+
+        footer {
+            margin-top: 40px;
+            padding: 20px 0;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #888888;
+            line-height: 1.6;
+            width: 100%;
+        }
+
+        footer a { color: #888888; text-decoration: underline; }
+        footer a:hover { color: #ffffff; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-top">
+            <h1>Pursuit Rotor Test</h1>
+            <div class="btn-group">
+                <button id="startBtn" class="primary-btn">Start Session</button>
+                <button id="resetBtn" title="Reset All Trials">Reset Data</button>
+            </div>
+        </div>
+        <div class="instructions">Instructions: Keep your cursor (or finger) continuously inside the moving circular target.</div>
+    </div>
+
+    <div class="stats">
+        <div class="stat-box">
+            <span class="stat-label">Trial</span>
+            <span class="stat-value"><span id="trialCount">1</span> / <span id="maxTrialsDisp">5</span></span>
+        </div>
+        <div style="border-left: 1px solid #333; height: 30px; margin-top: 5px;"></div>
+        <div class="stat-box">
+            <span class="stat-label">Time on Target</span>
+            <span class="stat-value"><span id="timeTarget">0.0</span>s</span>
+        </div>
+        <div style="border-left: 1px solid #333; height: 30px; margin-top: 5px;"></div>
+        <div class="stat-box">
+            <span class="stat-label">Remaining</span>
+            <span class="stat-value"><span id="timeRemaining">15</span>s</span>
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <!-- Internal resolution is locked at 400x400 -->
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div id="trialOverlay" class="overlay">
+            <h2 id="overlayTitle">Trial Complete</h2>
+            <p>Time on Target: <span id="overlayTime" style="font-weight: bold; color: white;">0.00</span>s</p>
+            <p>Accuracy: <span id="overlayPercent" style="font-weight: bold; color: white;">0</span>%</p>
+            <div id="countdownText" class="countdown"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="control-row">
+            <label>Trials per Session</label>
+            <input type="range" id="maxTrialsSlider" min="1" max="20" value="5">
+            <div class="val-display" id="maxTrialsVal">5</div>
+        </div>
+        <div class="control-row">
+            <label>RPM (Speed)</label>
+            <input type="range" id="rpmSlider" min="1" max="60" value="8">
+            <div class="val-display" id="rpmVal">8</div>
+        </div>
+        <div class="control-row">
+            <label>Target Size</label>
+            <input type="range" id="sizeSlider" min="10" max="50" value="25">
+            <div class="val-display" id="sizeVal">25</div>
+        </div>
+        <div class="control-row">
+            <label>Duration (s)</label>
+            <input type="range" id="durationSlider" min="5" max="60" value="15">
+            <div class="val-display" id="durationVal">15</div>
+        </div>
+        <div class="control-row">
+            <label>Rest Interval (s)</label>
+            <input type="range" id="restSlider" min="0" max="60" value="10">
+            <div class="val-display" id="restVal">10</div>
+        </div>
+    </div>
+
+    <div class="results-section">
+        <div class="results-header">
+            <h3 style="margin:0; font-size: 1rem; font-weight: normal;">Learning Curve Data</h3>
+            <button id="exportBtn" disabled>Export CSV</button>
+        </div>
+        <table id="resultsTable">
+            <thead>
+                <tr>
+                    <th>Trial</th>
+                    <th>RPM</th>
+                    <th>Size</th>
+                    <th>Score (s)</th>
+                    <th>Acc %</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- Data goes here -->
+            </tbody>
+        </table>
+    </div>
+
+    <footer>
+        © 2026 Sarah Qureshi. All rights reserved.<br>
+        Created by Sarah Qureshi | LinkedIn: <a href="https://www.linkedin.com/in/sarah-qureshi-33a459438?utm_source=share_via&utm_content=profile&utm_medium=member_android" target="_blank">Profile</a>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasContainer = document.querySelector('.canvas-container');
+        
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const trialDisp = document.getElementById('trialCount');
+        const maxTrialsDisp = document.getElementById('maxTrialsDisp');
+        const remainingDisp = document.getElementById('timeRemaining');
+        const targetDisp = document.getElementById('timeTarget');
+        
+        const overlay = document.getElementById('trialOverlay');
+        const overlayTitle = document.getElementById('overlayTitle');
+        const overlayTime = document.getElementById('overlayTime');
+        const overlayPercent = document.getElementById('overlayPercent');
+        const countdownText = document.getElementById('countdownText');
+        const tableBody = document.getElementById('tableBody');
+
+        const maxTrialsSlider = document.getElementById('maxTrialsSlider');
+        const maxTrialsVal = document.getElementById('maxTrialsVal');
+        const rpmSlider = document.getElementById('rpmSlider');
+        const rpmVal = document.getElementById('rpmVal');
+        const durationSlider = document.getElementById('durationSlider');
+        const durationVal = document.getElementById('durationVal');
+        const sizeSlider = document.getElementById('sizeSlider');
+        const sizeVal = document.getElementById('sizeVal');
+        const restSlider = document.getElementById('restSlider');
+        const restVal = document.getElementById('restVal');
+
+        // Initial Parameters
+        let MAX_TRIALS = parseInt(maxTrialsSlider.value);
+        let RPM = parseInt(rpmSlider.value); 
+        let TRIAL_DURATION = parseInt(durationSlider.value); 
+        let TARGET_RADIUS = parseInt(sizeSlider.value);
+        let REST_INTERVAL = parseInt(restSlider.value);
+        
+        const pathRadius = 130;
+        const targetInnerRadius = 5;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        let isTesting = false;
+        let isResting = false;
+        let isSessionComplete = false;
+        let currentTrial = 1;
+        let angle = -Math.PI / 2; 
+        let timeOnTarget = 0;
+        let totalTime = 0;
+        let lastTimestamp = 0;
+        let mouseX = -100, mouseY = -100; // start off-screen
+        let animationId;
+        let restIntervalId;
+        let resultsData = [];
+
+        // UI Listeners
+        function updateSliders() {
+            MAX_TRIALS = parseInt(maxTrialsSlider.value); maxTrialsVal.innerText = MAX_TRIALS; maxTrialsDisp.innerText = MAX_TRIALS;
+            RPM = parseInt(rpmSlider.value); rpmVal.innerText = RPM;
+            TARGET_RADIUS = parseInt(sizeSlider.value); sizeVal.innerText = TARGET_RADIUS;
+            REST_INTERVAL = parseInt(restSlider.value); restVal.innerText = REST_INTERVAL;
+            TRIAL_DURATION = parseInt(durationSlider.value); durationVal.innerText = TRIAL_DURATION;
+            
+            if (!isTesting && !isResting && !isSessionComplete) {
+                remainingDisp.innerText = TRIAL_DURATION;
+                drawScene(centerX + pathRadius * Math.cos(angle), centerY + pathRadius * Math.sin(angle), false);
+            }
+        }
+
+        maxTrialsSlider.addEventListener('input', updateSliders);
+        rpmSlider.addEventListener('input', updateSliders);
+        sizeSlider.addEventListener('input', updateSliders);
+        durationSlider.addEventListener('input', updateSliders);
+        restSlider.addEventListener('input', updateSliders);
+
+        // Universal pointer support attached to the CONTAINER, mapping to responsive canvas scale
+        canvasContainer.addEventListener('pointermove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            
+            // Calculate scale ratio between actual display size and internal 400x400 size
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            mouseX = (e.clientX - rect.left) * scaleX;
+            mouseY = (e.clientY - rect.top) * scaleY;
+        });
+        
+        canvasContainer.addEventListener('pointerleave', () => { mouseX = -100; mouseY = -100; });
+
+        function drawScene(targetX, targetY, isOnTarget) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Path
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, pathRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = '#444444';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 10]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Center dot
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
+            ctx.fillStyle = '#444444';
+            ctx.fill();
+
+            // Moving Target Outer
+            ctx.beginPath();
+            ctx.arc(targetX, targetY, TARGET_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = isOnTarget ? 'rgba(255, 128, 128, 0.4)' : 'rgba(229, 179, 179, 0.2)'; 
+            ctx.fill();
+            ctx.strokeStyle = isOnTarget ? '#ff8080' : '#e5b3b3';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Moving Target Inner
+            ctx.beginPath();
+            ctx.arc(targetX, targetY, targetInnerRadius, 0, Math.PI * 2);
+            ctx.fillStyle = isOnTarget ? '#ff8080' : '#e5b3b3'; 
+            ctx.fill();
+        }
+
+        function startTrial() {
+            if (isTesting || isResting || isSessionComplete) return;
+            isTesting = true;
+            angle = -Math.PI / 2;
+            timeOnTarget = 0;
+            totalTime = 0;
+            lastTimestamp = performance.now();
+            
+            overlay.classList.remove('active');
+            overlayTitle.innerText = "Trial Complete"; 
+            
+            toggleControls(true);
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function toggleControls(disabled) {
+            startBtn.disabled = disabled;
+            maxTrialsSlider.disabled = disabled;
+            rpmSlider.disabled = disabled;
+            sizeSlider.disabled = disabled;
+            durationSlider.disabled = disabled;
+            restSlider.disabled = disabled;
+        }
+
+        function endTrial() {
+            isTesting = false;
+            
+            // Hard cap time on target to prevent scoring nudges over 100% due to frame deltas
+            timeOnTarget = Math.min(timeOnTarget, TRIAL_DURATION);
+            
+            let percent = ((timeOnTarget / TRIAL_DURATION) * 100).toFixed(1);
+            
+            // Log Data
+            resultsData.push({
+                trial: currentTrial,
+                rpm: RPM,
+                size: TARGET_RADIUS,
+                duration: TRIAL_DURATION,
+                score: timeOnTarget.toFixed(2),
+                accuracy: percent
+            });
+            updateTable();
+            exportBtn.disabled = false;
+
+            // Show Results overlay
+            overlayTime.innerText = timeOnTarget.toFixed(2);
+            overlayPercent.innerText = percent;
+            overlay.classList.add('active');
+
+            if (currentTrial >= MAX_TRIALS) {
+                // Session is fully complete
+                isSessionComplete = true;
+                overlayTitle.innerText = "Session Complete";
+                countdownText.innerText = "All scheduled trials finished.";
+                startBtn.innerText = "Session Done";
+                startBtn.disabled = true; // Wait for hard reset
+            } else if (REST_INTERVAL > 0) {
+                // Spaced practice: start rest countdown
+                isResting = true;
+                let timeLeft = REST_INTERVAL;
+                countdownText.innerText = `Next trial in ${timeLeft}s`;
+                
+                restIntervalId = setInterval(() => {
+                    timeLeft--;
+                    if (timeLeft > 0) {
+                        countdownText.innerText = `Next trial in ${timeLeft}s`;
+                    } else {
+                        clearInterval(restIntervalId);
+                        isResting = false;
+                        currentTrial++;
+                        trialDisp.innerText = currentTrial;
+                        startTrial();
+                    }
+                }, 1000);
+            } else {
+                // Massed practice: manual trigger for next trial
+                countdownText.innerText = "Ready for next trial";
+                currentTrial++;
+                trialDisp.innerText = currentTrial;
+                toggleControls(false);
+                startBtn.innerText = "Start Next Trial";
+            }
+        }
+
+        function resetAll() {
+            isTesting = false;
+            isResting = false;
+            isSessionComplete = false;
+            
+            cancelAnimationFrame(animationId);
+            clearInterval(restIntervalId);
+            
+            currentTrial = 1;
+            totalTime = 0;
+            timeOnTarget = 0;
+            angle = -Math.PI / 2;
+            resultsData = [];
+            updateTable();
+            
+            trialDisp.innerText = currentTrial;
+            remainingDisp.innerText = TRIAL_DURATION;
+            targetDisp.innerText = "0.0";
+            
+            startBtn.innerText = "Start Session";
+            overlay.classList.remove('active');
+            exportBtn.disabled = true;
+            
+            toggleControls(false);
+            drawScene(centerX + pathRadius * Math.cos(angle), centerY + pathRadius * Math.sin(angle), false);
+        }
+
+        function gameLoop(timestamp) {
+            if (!isTesting) return;
+
+            // Time step cap logic prevents massive jumps if user switches tabs mid-trial
+            let rawDelta = (timestamp - lastTimestamp) / 1000;
+            const deltaTime = Math.min(rawDelta, 0.1); 
+            lastTimestamp = timestamp;
+            totalTime += deltaTime;
+
+            const angularSpeed = (RPM * 2 * Math.PI) / 60;
+            angle += angularSpeed * deltaTime;
+
+            const targetX = centerX + pathRadius * Math.cos(angle);
+            const targetY = centerY + pathRadius * Math.sin(angle);
+
+            const distanceToTarget = Math.hypot(mouseX - targetX, mouseY - targetY);
+            const isOnTarget = distanceToTarget <= TARGET_RADIUS;
+
+            if (isOnTarget) timeOnTarget += deltaTime;
+
+            drawScene(targetX, targetY, isOnTarget);
+
+            let remaining = Math.max(0, TRIAL_DURATION - totalTime);
+            remainingDisp.innerText = Math.ceil(remaining);
+            targetDisp.innerText = Math.min(timeOnTarget, TRIAL_DURATION).toFixed(1);
+
+            if (totalTime >= TRIAL_DURATION) {
+                endTrial();
+            } else {
+                animationId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function updateTable() {
+            tableBody.innerHTML = '';
+            resultsData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${row.trial}</td><td>${row.rpm}</td><td>${row.size}</td><td>${row.score}</td><td>${row.accuracy}%</td>`;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function exportCSV() {
+            let csv = "Trial,RPM,Target Radius,Duration (s),Score (s),Accuracy (%)\n";
+            resultsData.forEach(row => {
+                csv += `${row.trial},${row.rpm},${row.size},${row.duration},${row.score},${row.accuracy}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'pursuit_rotor_results.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        resetAll();
+        
+        startBtn.addEventListener('click', startTrial);
+        resetBtn.addEventListener('click', resetAll);
+        exportBtn.addEventListener('click', exportCSV);
+    </script>
+</body>
+</html>
