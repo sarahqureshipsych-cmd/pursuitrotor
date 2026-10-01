@@ -57,5 +57,3 @@ This software is free to use for personal, educational and non-commercial purpos
 You may not copy, redistribute, modify, sell or create derivative works of the source code without prior written permission from the copyright holder.
 
 **Contact:** [sarahqureshipsych@gmail.com](mailto:sarahqureshipsych@gmail.com)
-© 2026 Sarah Qureshi. All rights reserved.  
-This software and associated documentation files are protected by copyright law. You may not reproduce, distribute, modify, display, or create derivative works of this software, in whole or in part, without explicit prior written permission from the copyright holder.
