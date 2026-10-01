@@ -1,59 +1,93 @@
-# Digital Pursuit Rotor Test
+# Pursuit Rotor Test
 
-A modern, highly configurable, browser-based implementation of the classic Pursuit Rotor apparatus used in cognitive psychology, neuroscience, and motor control research.
+A free, browser-based classroom simulation of the **pursuit rotor**, a classic apparatus for studying motor learning. A target moves around a circular path, and the participant tries to keep their cursor (or finger) on it for as long as possible. The tool records time on target and accuracy across repeated trials and draws a learning curve.
 
-## 1. Background & History
-The Pursuit Rotor Test is a classic "tracking game" designed to measure visual-motor tracking skills and hand-eye coordination. 
-* **The Traditional Apparatus:** Historically, the test utilized a mechanical device resembling a vinyl record player. A metal turntable spun a small metal target (usually at a high speed, such as 60 RPM), and participants used a hinged metal wand (stylus) to maintain contact with the target as it rotated.
-* **The Digital Evolution:** Because tracking an object with a computer mouse, trackpad, or touchscreen requires different biomechanical feedback than a physical wand, digital adaptations are typically scaled down in speed. The clinical standard for digital baseline testing is approximately 8 RPM. This application faithfully recreates the digital clinical standard while allowing researchers to scale difficulty linearly.
+**Live version:** https://sarahqureshipsych-cmd.github.io/pursuitrotor/
 
-## 2. What the Test Measures
-This software continuously evaluates user performance to quantify specific neurological and cognitive functions:
-* **Procedural Learning (Muscle Memory):** The brain's ability to automate a physical skill. Because the target moves in a predictable, continuous circle, healthy neural pathways will adapt, showing a distinct "learning curve" (higher scores in later trials compared to initial trials).
-* **Motor Control & Precision:** The efficiency of communication between the visual cortex and fine motor muscle groups to execute smooth, micro-adjustments.
-* **Sustained Attention & Fatigue:** Tracking a repetitive moving target requires intense executive focus. Degradation in scores over long durations highlights cognitive fatigue or lapses in concentration.
+**Related project:** [Digital Memory Drum Simulator](https://sarahqureshipsych-cmd.github.io/memorydrum/)
 
-## 3. Clinical & Research Applications
-Researchers and medical professionals utilize Pursuit Rotor tracking for several diagnostic and experimental purposes:
-* **Neurodegenerative Disease Screening:** Conditions like Parkinson’s or Huntington’s impair the basal ganglia, making smooth muscle movements difficult. Patients typically struggle to stay on target and show flattened learning curves.
-* **Traumatic Brain Injury (TBI):** Used to assess hand-eye coordination deficits following concussions or severe head trauma.
-* **Pharmacological & Fatigue Studies:** Applied to measure the extent to which alcohol, specific medications, or sleep deprivation impairs physical reflexes and coordination.
+> **Note:** This is a classroom demonstration. Using a mouse or finger on a screen differs from a stylus on a physical rotor, and screen and input delay can add error. Results are for teaching and demonstration only and are not lab-grade measurements.
 
-## 4. Software Features & Parameters
-This application is built for maximum flexibility in a laboratory or classroom setting. It features a responsive, touch-friendly HTML5 Canvas that scales perfectly across desktop monitors, tablets, and smartphones. 
+---
 
-Researchers can manipulate the following independent variables in real-time:
-* **Trials per Session (1–20):** Define the exact number of tracking rounds before the session concludes and data is finalized.
-* **RPM / Speed (1–60):** Adjust the rotational velocity of the target. 8 RPM is the baseline standard; higher RPMs exponentially increase difficulty.
-* **Target Size (10–50px):** Manipulate the spatial margin of error. A smaller radius demands higher visual-motor precision.
-* **Trial Duration (5–60s):** Standard trials last 15–20 seconds. Shorter durations test immediate acquisition, while longer durations induce cognitive fatigue.
-* **Rest Interval (0–60s):** Controls the inter-trial interval (ITI) for experimental design. 
+## Features
 
-## 5. Experimental Design: Massed vs. Spaced Practice
-The software natively supports standard practice distribution experiments:
-* **Massed Practice:** Set the *Rest Interval* to `0`. The test will pause after each trial, requiring the user to manually click "Start Next Trial," allowing for immediate repetition with minimal rest.
-* **Spaced Practice:** Set the *Rest Interval* above `0` (e.g., 10 seconds). The software will introduce a strict, automated countdown timer between trials, enforcing neurological rest before the next round begins.
+- Target moving clockwise around a dashed circular path, starting from the top of the circle at the start of each trial
+- Works with **mouse, touch and pen** input (pointer events)
+- Responsive canvas that scales to the screen, with pointer positions mapped to the internal 400 x 400 drawing area
+- Live display of the current trial, time on target, and time remaining
+- Results panel at the end of each trial showing **time on target** and **accuracy**
+- Multi-trial sessions with a "Session Complete" message
+- Results table and a **learning curve chart** of accuracy by trial
+- **CSV export** of all trial data
+- No installation, no accounts, no external libraries (a single HTML file)
 
-## 6. Scoring & Data Export
-The application operates on a 60-frames-per-second (`requestAnimationFrame`) loop to ensure high-fidelity timekeeping. 
+## How to use
 
-* **Time on Target (ToT):** Calculated by accumulating the exact delta-time (in milliseconds) the user's cursor or finger remains within the target radius. The software strictly caps time calculation to the exact duration of the trial to prevent frame-trailing inaccuracies.
-* **Accuracy:** Represented as the percentage of the total trial duration successfully tracked.
-* **CSV Export:** Upon completion of a trial or session, researchers can export a `.csv` file containing the learning curve data. The spreadsheet logs: *Trial Number, RPM, Target Radius, Trial Duration, Score (s), and Accuracy (%)*.
+1. Open the page in a browser on a computer, phone or tablet.
+2. Adjust the settings (optional).
+3. Press **Start Session**.
+4. Keep your cursor or finger inside the moving circular target until the trial ends.
+5. Read your results and repeat for the remaining trials. Press **Export CSV** to download your data, or **Reset Data** to clear everything and start again.
 
-## 7. Setup & Usage
-No installation, backend server, or dependencies are required. 
+## Settings
 
-## 8. Author & Copyright
-**Created by:** Sarah Qureshi  
-This tool complements other cognitive psychology resources, such as the Digital Memory Drum Simulator, to provide accessible, high-quality interactive lab experiences.
+| Setting | Range | Default | What it does |
+|---|---|---|---|
+| Trials per Session | 1 to 20 | 5 | Number of trials before the session ends |
+| RPM (Speed) | 1 to 60 | 30 | Rotation speed of the target in revolutions per minute |
+| Target Size | 10 to 50 | 15 | Radius of the target in pixels (smaller is harder) |
+| Duration (s) | 5 to 60 | 15 | Length of each trial in seconds |
+| Rest Interval (s) | 0 to 60 | 10 | Rest between trials (see below) |
 
- # License
+Settings are locked while a session is running. Press **Reset Data** to change them again.
 
-**Copyright (c) 2026 Sarah Qureshi. All rights reserved.**
+### Massed and spaced practice
+
+- **Rest Interval above 0:** after each trial a countdown runs, and the next trial starts automatically (spaced practice).
+- **Rest Interval of 0:** the next trial waits for you to press **Start Next Trial** (massed practice).
+
+This lets students compare practice schedules and see how speed and target size affect performance.
+
+## How scoring works
+
+- **Score (time on target):** the total time, in seconds, that the pointer was inside the target circle during the trial.
+- **Accuracy (%):** `time on target / trial duration x 100`, shown to one decimal place.
+- Time on target is capped at the trial duration, so accuracy cannot exceed 100%.
+- To avoid large jumps if the browser tab is hidden mid-trial, each animation frame is limited to a maximum of 0.1 seconds.
+- If the pointer leaves the play area, it counts as being off target.
+
+## Exported data
+
+The CSV file is named `pursuit_rotor_results.csv` and has one row per trial with these columns:
+
+`Trial, RPM, Target Radius, Duration (s), Score (s), Accuracy (%)`
+
+## Limitations
+
+- Data is stored only in the page's memory. Reloading or closing the page clears it, so export your CSV first.
+- A single target and a circular path only.
+- Timing depends on the device's screen refresh rate and input latency.
+- Not validated against physical pursuit rotor apparatus.
+
+## Technical notes
+
+- Built with HTML, CSS and JavaScript in one file, using the HTML canvas
+- No dependencies and no data sent to any server
+- To host on GitHub Pages, name the file `index.html` and enable Pages for the repository
+
+## License
+
+Copyright (c) 2026 Sarah Qureshi. All rights reserved.
 
 This software is free to use for personal, educational and non-commercial purposes, including use in classrooms and linking to it from other sites.
 
 You may not copy, redistribute, modify, sell or create derivative works of the source code without prior written permission from the copyright holder.
 
-**Contact:** [sarahqureshipsych@gmail.com](mailto:sarahqureshipsych@gmail.com)
+The software is provided "as is", without warranty of any kind.
+
+Contact: sarahqureshipsych@gmail.com
+
+## Author
+
+Created by Sarah Qureshi, undergraduate psychology student, Government College for Women, M.A. Road, Srinagar.
